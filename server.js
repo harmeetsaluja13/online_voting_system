@@ -1,26 +1,24 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcryptjs');
-const mongoose = require('mongoose'); // Mongoose for MongoDB interaction
+const mongoose = require('mongoose'); 
 const path = require('path'); 
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = 3000;
-
-// --- MONGODB CONNECTION SETUP ---
-// ⚠️ IMPORTANT: REPLACE THIS WITH YOUR ACTUAL CONNECTION STRING ⚠️
+//mongoose
 const MONGO_URI = "mongodb://localhost:27017/online_voting_db"; 
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB Connected Successfully.'))
     .catch(err => console.error('MongoDB Connection Error:', err));
 
-// --- Mongoose Schemas and Models ---
+// --- Models ---
 
 // Candidate Schema
 const CandidateSchema = new mongoose.Schema({
-    // Using Mongoose's default _id, but keeping the name/party/count fields
+    
     name: { type: String, required: true, trim: true },
     party: { type: String, required: true, trim: true },
     voteCount: { type: Number, default: 0 }
@@ -28,7 +26,7 @@ const CandidateSchema = new mongoose.Schema({
 
 const CandidateModel = mongoose.model('Candidate', CandidateSchema);
 
-// User Schema
+//user schema
 const UserSchema = new mongoose.Schema({
     aadhar: { type: String, required: true, unique: true, index: true, minlength: 12, maxlength: 12 },
     passwordHash: { type: String, required: true },
@@ -40,27 +38,28 @@ const UserSchema = new mongoose.Schema({
 
 const UserModel = mongoose.model('User', UserSchema);
 
-// --- Admin Credentials (Still in-memory for this example) ---
-const ADMIN_AADHAR = "999988887777";
+
+const ADMIN_AADHAR = "123456789111";
 let ADMIN_PASSWORD_HASH = ""; 
 
-// Hash the default admin password on startup
+
 const initializeAdmin = async () => {
-    // Admin Credentials: Aadhar: 999988887777 | Password: newadmin456
-    ADMIN_PASSWORD_HASH = await bcrypt.hash('newadmin456', 10);
+    
+    ADMIN_PASSWORD_HASH = await bcrypt.hash('meet@123', 10);//10 used for salt round more secure
 };
 initializeAdmin();
 
 
-// --- Express Middleware Setup ---
-app.use(bodyParser.json());
+// --- Express Middleware Setup cookieparser helmet morgan ---
 
-// 1. Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public'))); 
+app.use(bodyParser.json());//used to read  req.body  parsed data/app.use(express.json());(alternative)
 
-// 2. Serve the main HTML file at the root path
+
+app.use(express.static(path.join(__dirname, 'public'))); //Serve static files from the 'public' directory
+
+
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'voting_app.html'));
+    res.sendFile(path.join(__dirname, 'public', 'voting_app.html'));//home page //Serve the main HTML file at the root path
 });
 
 
@@ -71,25 +70,25 @@ const authenticateUser = async (req, res, next) => {
     const aadhar = req.headers['x-aadhar-id'];
     if (!aadhar) {
         return res.status(401).json({ message: "Access denied. Aadhar ID required in header." });
-    }
+    }//empty
 
     if (aadhar === ADMIN_AADHAR) {
         req.userId = ADMIN_AADHAR;
         req.userType = 'admin';
         return next();
-    }
+    }//admin check
     
     // Check if the user exists in the database
-    const user = await UserModel.findOne({ aadhar });
+    const user = await UserModel.findOne({ aadhar });//normal user
 
     if (!user) {
-        return res.status(401).json({ message: "Access denied. Invalid Aadhar ID." });
+        return res.status(401).json({ message: "Access denied. Invalid Aadhar ID." });//invalid user
     }
     
     req.userId = aadhar;
     req.userType = 'user';
     next();
-};
+};//user details
 
 // Middleware to check specifically for the admin Aadhar ID
 const authenticateAdmin = (req, res, next) => {
@@ -387,5 +386,5 @@ app.delete('/candidates/:candidateId', authenticateAdmin, async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     console.log("Access the frontend at http://localhost:3000/");
-    console.log("Admin Aadhar: 999988887777 | Password: newadmin456");
+    console.log("Admin Aadhar: 123456789111 | Password: meet@123");
 });
